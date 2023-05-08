@@ -15,14 +15,43 @@ async function start() {
     await buildHtml();
 }
 
-
 async function createDir() {
     await fsPromise.mkdir(path.resolve(__dirname, 'project-dist'), {recursive: true});
-
 }
 
 async function copyAssets() {
-    await fsPromise.cp(path.resolve(__dirname, 'assets'), path.resolve(__dirname, 'project-dist', 'assets'), {recursive: true});
+    const src = path.resolve(__dirname, 'assets');
+    const dest = path.resolve(__dirname, 'project-dist', 'assets');
+    await copyFolder(src, dest)
+}
+
+
+async function copyFolder(src, dest) {
+    const createDir = await fsPromise.mkdir(dest, {recursive: true});
+    const files = await fsPromise.readdir(src, {withFileTypes: true});
+    let arr = [];
+
+    files.forEach((file) => {
+        arr.push(file.name);
+    })
+
+    const readNewDir = await fsPromise.readdir(dest);
+    readNewDir.forEach((item) => {
+        if (!arr.includes(item)) {
+            fsPromise.rm(path.resolve(dest, item))
+        }
+    });
+    for (const file of files) {
+        if (file.isDirectory()) {
+            const oldSrcDirPath = path.resolve(src, path.parse(file.name).base);
+            const newDestPath = path.resolve(dest, path.parse(file.name).base);
+            await copyFolder(oldSrcDirPath, newDestPath);
+
+        } else {
+            await fsPromise.copyFile(path.resolve(src, path.parse(file.name).base)
+                , path.resolve(dest, path.parse(file.name).base));
+        }
+    }
 }
 
 async function replaceAsync(str, regex, asyncFn) {
@@ -51,12 +80,8 @@ async function changeText(match) {
 
             const filePath = path.resolve(componentsDirPath, file.name);
             const newtext = await read(filePath);
-            console.log(newtext);
-
-            return newtext;
+              return newtext;
         }
-
-
     }
 }
 
